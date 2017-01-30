@@ -2,6 +2,9 @@
 
 let Queue = require('./queue.js');
 
+let fib = function(n) {
+  return n <= 1 ? n : fib(n - 1) + fib(n - 2);
+};
 describe('Queue', () => {
   let queue;
 
@@ -32,9 +35,7 @@ describe('Queue', () => {
 
     });
     for (let test = 5; test < 10; test++) {
-      let fib = function(n) {
-        return n <= 1 ? n : fib(n - 1) + fib(n - 2);
-      };
+
       let expected = fib(test);
 
       it('task-response fib(' + test + ')=' + expected, function(d) {
@@ -50,5 +51,60 @@ describe('Queue', () => {
       });
     }
   });
+  describe('features', () => {
+    it('apply domain', (d) => {
+      queue.addRouter({
+        domain: 'default',
+        do: function(event, data) {
+          return this.domain + '/' + event;
+        },
+        act: function(event) {
+          return this.domain + '/' + event;
+        }
+      });
+      queue.listenTask('fib', (data) => {
+        return fib(data);
+      });
+      let expected = fib(1);
+      queue.do('fib', 1).then((result) => {
+        expect(result).to.be.equal(expected);
+        d();
+      })
+    });
 
+    it('apply domain event', (d) => {
+      queue.addRouter({
+        domain: 'default',
+        emit: function(event, data) {
+          return this.domain + '/' + event;
+        },
+        on: function(event) {
+          return this.domain + '/' + event;
+        }
+      });
+      queue.on('fib', (data) => {
+        expect(data).to.be.equal(100);
+        d();
+      });
+
+      queue.emit('fib', 100);
+    });
+
+    it('use plugin', (d) => {
+      let store = 'nope'
+      queue.addPlugin({
+        emit: (event, data) => store = event,
+        on: (event) => true,
+        do: () => true,
+        act: () => true
+      });
+
+      queue.on('fib', (data) => {
+        expect(store).to.be.equal('fib');
+        d();
+      });
+
+      queue.emit('fib', 100);
+    })
+  });
 });
